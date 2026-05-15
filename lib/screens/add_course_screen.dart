@@ -23,19 +23,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     super.dispose();
   }
 
-  String? _validateCourseName(String value) {
-    if (value.isEmpty) {
-      return null; // Don't show error while typing
-    } else if (value.length < 3) {
-      return 'Minimal 3 karakter';
+  // Validasi disederhanakan agar lebih ringan
+  String? _validateInput(String? value, String fieldName) {
+    if (value == null || value.isEmpty) {
+      return '$fieldName tidak boleh kosong';
     }
-    return null;
-  }
-
-  String? _validateLecturer(String value) {
-    if (value.isEmpty) {
-      return null;
-    } else if (value.length < 3) {
+    if (value.length < 3) {
       return 'Minimal 3 karakter';
     }
     return null;
@@ -43,12 +36,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   Future<void> _addCourse() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
-        // Add timeout to prevent hanging
         await _firebaseService
             .addCourse(
               _courseNameController.text.trim(),
@@ -56,9 +46,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             )
             .timeout(
               const Duration(seconds: 15),
-              onTimeout: () {
-                throw TimeoutException('Connection timeout. Please check your internet.');
-              },
+              onTimeout: () => throw TimeoutException('Koneksi timeout. Silakan cek internet Anda.'),
             );
 
         if (mounted) {
@@ -70,32 +58,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           );
           Navigator.pop(context);
         }
-      } on TimeoutException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.message ?? 'Request timeout'),
-              duration: const Duration(seconds: 3),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: $e'),
-              duration: const Duration(seconds: 3),
+              content: Text(e is TimeoutException ? e.message! : 'Error: $e'),
               backgroundColor: Colors.red,
             ),
           );
         }
       } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -103,13 +76,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Pastikan background bersih
       appBar: AppBar(
-        title: const Text('Tambah Mata Kuliah'),
+        title: const Text('Tambah Mata Kuliah', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.deepPurple,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
@@ -117,170 +93,109 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             children: [
               const Text(
                 'Tambah Mata Kuliah',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
               const SizedBox(height: 8),
               Text(
                 'Daftarkan mata kuliah baru',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
               const SizedBox(height: 32),
-              Text(
-                'Nama Mata Kuliah',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
+              
+              _buildLabel('Nama Mata Kuliah'),
               const SizedBox(height: 8),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _courseNameController,
-                builder: (context, value, child) {
-                  final error = _validateCourseName(value.text);
-                  final isValid = error == null && value.text.isNotEmpty;
-
-                  return TextFormField(
-                    controller: _courseNameController,
-                    decoration: InputDecoration(
-                      hintText: 'Contoh: Pemrograman Mobile',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: error != null ? Colors.red : Colors.grey[300]!,
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: error != null ? Colors.red : Colors.deepPurple,
-                          width: 2,
-                        ),
-                      ),
-                      prefixIcon: const Icon(Icons.book_outlined, color: Colors.deepPurple),
-                      suffixIcon: isValid
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      errorText: error,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama mata kuliah tidak boleh kosong';
-                      }
-                      if (value.length < 3) {
-                        return 'Minimal 3 karakter';
-                      }
-                      return null;
-                    },
-                  );
-                },
+              _buildTextField(
+                controller: _courseNameController,
+                hint: 'Contoh: Pemrograman Aplikasi Web',
+                icon: Icons.book_outlined,
+                validator: (v) => _validateInput(v, 'Nama mata kuliah'),
               ),
+              
               const SizedBox(height: 24),
-              Text(
-                'Nama Dosen',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
+              
+              _buildLabel('Nama Dosen'),
               const SizedBox(height: 8),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _lecturerController,
-                builder: (context, value, child) {
-                  final error = _validateLecturer(value.text);
-                  final isValid = error == null && value.text.isNotEmpty;
-
-                  return TextFormField(
-                    controller: _lecturerController,
-                    decoration: InputDecoration(
-                      hintText: 'Contoh: Dr. Andi Wijaya',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: error != null ? Colors.red : Colors.grey[300]!,
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: error != null ? Colors.red : Colors.deepPurple,
-                          width: 2,
-                        ),
-                      ),
-                      prefixIcon: const Icon(Icons.person_outline, color: Colors.deepPurple),
-                      suffixIcon: isValid
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      errorText: error,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama dosen tidak boleh kosong';
-                      }
-                      if (value.length < 3) {
-                        return 'Minimal 3 karakter';
-                      }
-                      return null;
-                    },
-                  );
-                },
+              _buildTextField(
+                controller: _lecturerController,
+                hint: 'Contoh: Dr. Wijaya',
+                icon: Icons.person_outline,
+                validator: (v) => _validateInput(v, 'Nama dosen'),
               ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _addCourse,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'SIMPAN MATA KULIAH',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 16),
+              
+              const SizedBox(height: 40),
+              _buildSubmitButton(),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[800]),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    required String? Function(String?) validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      style: const TextStyle(color: Colors.black87, fontSize: 16),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400]),
+        filled: true,
+        fillColor: Colors.grey[50],
+        prefixIcon: Icon(icon, color: Colors.deepPurple),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _addCourse,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.deepPurple,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              )
+            : const Text(
+                'SIMPAN MATA KULIAH',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
       ),
     );
   }

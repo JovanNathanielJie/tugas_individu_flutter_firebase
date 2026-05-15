@@ -122,7 +122,6 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
       });
 
       try {
-        // Add timeout to prevent hanging
         await _firebaseService
             .addNote(
               _selectedCourse!.id,
@@ -209,7 +208,6 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    // Course Selection
                     Text(
                       'Mata Kuliah',
                       style: TextStyle(
