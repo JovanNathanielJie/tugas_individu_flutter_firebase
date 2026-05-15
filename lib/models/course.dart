@@ -2,17 +2,20 @@ class Course {
   final String id;
   final String name;
   final String lecturer;
+  final bool isFavorite;
 
   Course({
     required this.id,
     required this.name,
     required this.lecturer,
+    this.isFavorite = false,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'lecturer': lecturer,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -21,6 +24,7 @@ class Course {
       id: id,
       name: map['name'] ?? '',
       lecturer: map['lecturer'] ?? '',
+      isFavorite: map['isFavorite'] ?? false,
     );
   }
 }

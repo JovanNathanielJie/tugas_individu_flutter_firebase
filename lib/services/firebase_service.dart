@@ -222,4 +222,100 @@ class FirebaseService {
       throw Exception('Error deleting note: $e');
     }
   }
+
+  /// Toggle favorite status of a course
+  Future<void> toggleCourseFavorite(String courseId, bool isFavorite) async {
+    try {
+      await _coursesRef.child(courseId).update({
+        'isFavorite': !isFavorite,
+      });
+    } catch (e) {
+      throw Exception('Error updating course favorite: $e');
+    }
+  }
+
+  /// Toggle favorite status of a note
+  Future<void> toggleNoteFavorite(String noteId, bool isFavorite) async {
+    try {
+      await _notesRef.child(noteId).update({
+        'isFavorite': !isFavorite,
+      });
+    } catch (e) {
+      throw Exception('Error updating note favorite: $e');
+    }
+  }
+
+  /// Get favorite courses
+  Stream<List<Course>> getFavoriteCoursesStream() {
+    return _coursesRef.onValue
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: (sink) {
+            print('[FirebaseService] Course stream timeout after 30 seconds');
+            sink.addError('Connection timeout. Check your internet connection.');
+          },
+        )
+        .map((event) {
+      final courses = <Course>[];
+      try {
+        if (event.snapshot.exists) {
+          final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+          data.forEach((key, value) {
+            try {
+              final course = Course.fromMap(key, Map<dynamic, dynamic>.from(value));
+              if (course.isFavorite) {
+                courses.add(course);
+              }
+            } catch (e) {
+              print('Error parsing course: $e');
+            }
+          });
+        }
+      } catch (e) {
+        print('Error in getFavoriteCoursesStream: $e');
+      }
+      return courses;
+    }).handleError((error) {
+      print('[FirebaseService] ERROR loading favorite courses: $error');
+      return [];
+    });
+  }
+
+  /// Get favorite notes
+  Stream<List<Note>> getFavoriteNotesStream() {
+    return _notesRef.onValue
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: (sink) {
+            print('[FirebaseService] Note stream timeout after 30 seconds');
+            sink.addError('Connection timeout. Check your internet connection.');
+          },
+        )
+        .map((event) {
+      final notes = <Note>[];
+      try {
+        if (event.snapshot.exists) {
+          final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+          data.forEach((key, value) {
+            try {
+              final note = Note.fromMap(key, Map<dynamic, dynamic>.from(value));
+              if (note.isFavorite) {
+                notes.add(note);
+              }
+            } catch (e) {
+              print('Error parsing note: $e');
+            }
+          });
+        }
+      } catch (e) {
+        print('Error in getFavoriteNotesStream: $e');
+      }
+      // Sort notes by timestamp in descending order (newest first)
+      notes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return notes;
+    }).handleError((error) {
+      print('[FirebaseService] ERROR loading favorite notes: $error');
+      return [];
+    });
+  }
 }

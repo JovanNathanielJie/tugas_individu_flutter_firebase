@@ -20,11 +20,37 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
   List<Course> _courses = [];
   bool _isLoading = false;
   bool _isLoadingCourses = true;
+  String? _titleError;
+  String? _contentError;
 
   @override
   void initState() {
     super.initState();
     _loadCourses();
+  }
+
+  void _validateTitle(String value) {
+    setState(() {
+      if (value.isEmpty) {
+        _titleError = null;
+      } else if (value.length < 3) {
+        _titleError = 'Minimal 3 karakter';
+      } else {
+        _titleError = null;
+      }
+    });
+  }
+
+  void _validateContent(String value) {
+    setState(() {
+      if (value.isEmpty) {
+        _contentError = null;
+      } else if (value.length < 5) {
+        _contentError = 'Minimal 5 karakter';
+      } else {
+        _contentError = null;
+      }
+    });
   }
 
   Future<void> _loadCourses() async {
@@ -83,7 +109,10 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
     if (_formKey.currentState!.validate()) {
       if (_selectedCourse == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pilih mata kuliah terlebih dahulu')),
+          const SnackBar(
+            content: Text('Pilih mata kuliah terlebih dahulu'),
+            backgroundColor: Colors.orange,
+          ),
         );
         return;
       }
@@ -110,7 +139,10 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Catatan berhasil ditambahkan')),
+            const SnackBar(
+              content: Text('✓ Catatan berhasil ditambahkan'),
+              backgroundColor: Colors.green,
+            ),
           );
           Navigator.pop(context);
         }
@@ -120,6 +152,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
             SnackBar(
               content: Text(e.message ?? 'Request timeout'),
               duration: const Duration(seconds: 3),
+              backgroundColor: Colors.red,
             ),
           );
         }
@@ -129,6 +162,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
             SnackBar(
               content: Text('Error: $e'),
               duration: const Duration(seconds: 3),
+              backgroundColor: Colors.red,
             ),
           );
         }
@@ -239,6 +273,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _titleController,
+                      onChanged: _validateTitle,
                       decoration: InputDecoration(
                         hintText: 'Contoh: Firebase Realtime Database',
                         border: OutlineInputBorder(
@@ -247,18 +282,31 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                          borderSide: BorderSide(
+                            color: _titleError != null ? Colors.red : Colors.grey[300]!,
+                            width: 1,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                          borderSide: BorderSide(
+                            color: _titleError != null ? Colors.red : Colors.deepPurple,
+                            width: 2,
+                          ),
                         ),
                         prefixIcon: const Icon(Icons.title, color: Colors.deepPurple),
+                        suffixIcon: _titleError == null && _titleController.text.isNotEmpty
+                            ? const Icon(Icons.check_circle, color: Colors.green)
+                            : null,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        errorText: _titleError,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Judul catatan tidak boleh kosong';
+                        }
+                        if (value.length < 3) {
+                          return 'Minimal 3 karakter';
                         }
                         return null;
                       },
@@ -276,6 +324,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _contentController,
+                      onChanged: _validateContent,
                       maxLines: 8,
                       decoration: InputDecoration(
                         hintText: 'Tulis isi catatan di sini...',
@@ -285,18 +334,33 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                          borderSide: BorderSide(
+                            color: _contentError != null ? Colors.red : Colors.grey[300]!,
+                            width: 1,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                          borderSide: BorderSide(
+                            color: _contentError != null ? Colors.red : Colors.deepPurple,
+                            width: 2,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         alignLabelWithHint: true,
+                        errorText: _contentError,
+                        helperText: '${_contentController.text.length} karakter',
+                        helperStyle: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Isi catatan tidak boleh kosong';
+                        }
+                        if (value.length < 5) {
+                          return 'Minimal 5 karakter';
                         }
                         return null;
                       },

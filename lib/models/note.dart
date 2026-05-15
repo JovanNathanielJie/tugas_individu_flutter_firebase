@@ -5,6 +5,7 @@ class Note {
   final String title;
   final String content;
   final int timestamp;
+  final bool isFavorite;
 
   Note({
     required this.id,
@@ -13,6 +14,7 @@ class Note {
     required this.title,
     required this.content,
     required this.timestamp,
+    this.isFavorite = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -22,6 +24,7 @@ class Note {
       'title': title,
       'content': content,
       'timestamp': timestamp,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -33,6 +36,7 @@ class Note {
       title: map['title'] ?? '',
       content: map['content'] ?? '',
       timestamp: map['timestamp'] ?? 0,
+      isFavorite: map['isFavorite'] ?? false,
     );
   }
 }

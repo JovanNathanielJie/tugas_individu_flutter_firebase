@@ -7,7 +7,12 @@ import 'add_note_screen.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  final Function(bool)? onThemeChanged;
+  
+  const HomeScreen({
+    Key? key,
+    this.onThemeChanged,
+  }) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -16,6 +21,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final FirebaseService _firebaseService = FirebaseService();
   late TabController _tabController;
+  bool _isDarkMode = false;
+  String _searchQuery = '';
+  String _searchCourseQuery = '';
+  String? _selectedCourseFilter;
+  List<Course> _allCourses = [];
+  String _sortBy = 'newest'; // 'newest', 'oldest', 'a-z', 'z-a'
+  bool _showFavoritesOnly = false; // NEW: Filter untuk favorites
 
   @override
   void initState() {
@@ -44,6 +56,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         title: const Text('Catatan Kuliah'),
         elevation: 0,
         backgroundColor: Colors.deepPurple,
+        actions: [
+          IconButton(
+            icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            tooltip: 'Toggle Dark Mode',
+            onPressed: () {
+              setState(() {
+                _isDarkMode = !_isDarkMode;
+              });
+              widget.onThemeChanged?.call(_isDarkMode);
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -138,146 +162,563 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         final courses = snapshot.data ?? [];
 
-        if (courses.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.school,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Belum ada mata kuliah',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: courses.length,
-          itemBuilder: (context, index) {
-            final course = courses[index];
-            final colors = [
-              Colors.deepPurple,
-              Colors.blue,
-              Colors.teal,
-              Colors.indigo,
-              Colors.cyan,
-            ];
-            final color = colors[index % colors.length];
-            
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Card(
-                    elevation: 0,
-                    margin: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 4,
-                          color: color,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            // Statistics Card
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: StreamBuilder<List<Note>>(
+                stream: _firebaseService.getNotesStream(),
+                builder: (context, notesSnapshot) {
+                  final noteCount = notesSnapshot.data?.length ?? 0;
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final textColor = isDark ? Colors.white : Colors.white;
+                  final subtextColor = isDark ? Colors.white70 : Colors.white.withOpacity(0.85);
+                  
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [Colors.deepPurple, Colors.indigo]
+                            : [Colors.deepPurple.shade400, Colors.deepPurple.shade600],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isDark ? Colors.deepPurple : Colors.deepPurple.shade300)
+                              .withOpacity(isDark ? 0.3 : 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        )
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Column(
                             children: [
                               Container(
-                                width: 56,
-                                height: 56,
+                                width: 60,
+                                height: 60,
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      color,
-                                      color.withOpacity(0.7),
-                                    ],
-                                  ),
+                                  color: Colors.white.withOpacity(isDark ? 0.2 : 0.25),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.book_outlined,
-                                  color: Colors.white,
-                                  size: 28,
+                                  color: textColor,
+                                  size: 32,
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      course.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.person_outline,
-                                          size: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            course.lecturer,
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 13,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                              const SizedBox(height: 12),
+                              Text(
+                                '${courses.length}',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                'Mata Kuliah',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: subtextColor,
                                 ),
                               ),
                             ],
                           ),
+                          Column(
+                            children: [
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(isDark ? 0.2 : 0.25),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.note_outlined,
+                                  color: textColor,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                '$noteCount',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                'Catatan',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: subtextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Search Field
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) {
+                        setState(() {
+                          _searchCourseQuery = value.toLowerCase();
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Cari mata kuliah...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchCourseQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchCourseQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Tampilkan hanya favorit',
+                    child: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _showFavoritesOnly = !_showFavoritesOnly;
+                        });
+                      },
+                      icon: Icon(
+                        _showFavoritesOnly ? Icons.favorite : Icons.favorite_outline,
+                        color: _showFavoritesOnly ? Colors.red : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+            // Courses List
+            if (courses.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 80),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.school,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Belum ada mata kuliah',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tekan tombol + untuk menambahkan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Builder(
+                builder: (context) {
+                  // Filter courses based on search query
+                  var filteredCourses = courses.where((course) {
+                    return course.name.toLowerCase().contains(_searchCourseQuery) ||
+                        course.lecturer.toLowerCase().contains(_searchCourseQuery);
+                  }).toList();
+
+                  // Apply favorites filter
+                  if (_showFavoritesOnly) {
+                    filteredCourses = filteredCourses.where((course) => course.isFavorite).toList();
+                  }
+
+                  if (filteredCourses.isEmpty && _searchCourseQuery.isNotEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Tidak ada mata kuliah yang sesuai',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (filteredCourses.isEmpty && _showFavoritesOnly) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.favorite_outline,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Belum ada mata kuliah favorit',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = filteredCourses[index];
+                      final colors = [
+                        Colors.deepPurple,
+                        Colors.blue,
+                        Colors.teal,
+                        Colors.indigo,
+                        Colors.cyan,
+                      ];
+                      final color = colors[index % colors.length];
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              )
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Card(
+                              elevation: 0,
+                              margin: EdgeInsets.zero,
+                              child: Column(
+                                children: [
+                                  Container(
+                                    height: 4,
+                                    color: color,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 56,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                color,
+                                                color.withOpacity(0.7),
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons.book_outlined,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                course.name,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                  letterSpacing: 0.2,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.person_outline,
+                                                    size: 14,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: Text(
+                                                      course.lecturer,
+                                                      style: TextStyle(
+                                                        color: Colors.grey[600],
+                                                        fontSize: 13,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () async {
+                                            try {
+                                              await _firebaseService.toggleCourseFavorite(
+                                                course.id,
+                                                course.isFavorite,
+                                              );
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Error: $e'),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          icon: Icon(
+                                            course.isFavorite ? Icons.favorite : Icons.favorite_outline,
+                                            color: course.isFavorite ? Colors.red : Colors.grey[600],
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            const SizedBox(height: 16),
+          ],
         );
       },
     );
   }
 
   Widget _buildNotesTab() {
+    return Column(
+      children: [
+        // Search and Filter Section
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Search field
+              TextField(
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Cari catatan...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Filter by course and Sort
+              Row(
+                children: [
+                  Expanded(
+                    child: StreamBuilder<List<Course>>(
+                      stream: _firebaseService.getCoursesStream(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const SizedBox.shrink();
+                        }
+                        
+                        _allCourses = snapshot.data ?? [];
+                        List<String> courseNames = [
+                          'Semua',
+                          ..._allCourses.map((c) => c.name)
+                        ];
+                        
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: courseNames.map((name) {
+                              bool isSelected = _selectedCourseFilter == null && name == 'Semua' ||
+                                  _selectedCourseFilter == name;
+                              
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  label: Text(name, overflow: TextOverflow.ellipsis),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      if (name == 'Semua') {
+                                        _selectedCourseFilter = null;
+                                      } else {
+                                        _selectedCourseFilter = selected ? name : null;
+                                      }
+                                    });
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Sort options and Favorites filter
+              Row(
+                children: [
+                  const Icon(Icons.sort, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildSortButton('Terbaru', 'newest'),
+                          const SizedBox(width: 8),
+                          _buildSortButton('Terlama', 'oldest'),
+                          const SizedBox(width: 8),
+                          _buildSortButton('A-Z', 'a-z'),
+                          const SizedBox(width: 8),
+                          _buildSortButton('Z-A', 'z-a'),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            label: const Text('❤ Favorit'),
+                            selected: _showFavoritesOnly,
+                            onSelected: (selected) {
+                              setState(() {
+                                _showFavoritesOnly = !_showFavoritesOnly;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _buildNotesList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSortButton(String label, String value) {
+    final isSelected = _sortBy == value;
+    return FilterChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _sortBy = value;
+        });
+      },
+    );
+  }
+
+  Widget _buildNotesList() {
     return StreamBuilder<List<Note>>(
       stream: _firebaseService.getNotesStream(),
       builder: (context, snapshot) {
@@ -329,7 +770,44 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           );
         }
 
-        final notes = snapshot.data ?? [];
+        var notes = snapshot.data ?? [];
+        
+        // Apply search filter
+        if (_searchQuery.isNotEmpty) {
+          notes = notes.where((note) {
+            return note.title.toLowerCase().contains(_searchQuery) ||
+                note.content.toLowerCase().contains(_searchQuery) ||
+                note.courseName.toLowerCase().contains(_searchQuery);
+          }).toList();
+        }
+        
+        // Apply course filter
+        if (_selectedCourseFilter != null) {
+          notes = notes.where((note) {
+            return note.courseName == _selectedCourseFilter;
+          }).toList();
+        }
+
+        // Apply favorites filter
+        if (_showFavoritesOnly) {
+          notes = notes.where((note) => note.isFavorite).toList();
+        }
+
+        // Apply sorting
+        switch (_sortBy) {
+          case 'oldest':
+            notes.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+            break;
+          case 'a-z':
+            notes.sort((a, b) => a.title.compareTo(b.title));
+            break;
+          case 'z-a':
+            notes.sort((a, b) => b.title.compareTo(a.title));
+            break;
+          case 'newest':
+          default:
+            notes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        }
 
         if (notes.isEmpty) {
           return Center(
@@ -343,7 +821,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Belum ada catatan',
+                  _searchQuery.isNotEmpty || _selectedCourseFilter != null
+                      ? 'Tidak ada catatan yang sesuai'
+                      : 'Belum ada catatan',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -427,8 +907,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                             Text(
                                               note.title,
                                               style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
+                                                fontWeight: FontWeight.w600,
                                                 fontSize: 16,
+                                                letterSpacing: 0.2,
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -449,12 +930,61 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  Text(
-                                    _formatDate(note.timestamp),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[500],
-                                    ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        _formatDate(note.timestamp),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: color.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '${note.content.length} char',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: color,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            onPressed: () async {
+                                              try {
+                                                await _firebaseService.toggleNoteFavorite(
+                                                  note.id,
+                                                  note.isFavorite,
+                                                );
+                                              } catch (e) {
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text('Error: $e'),
+                                                      backgroundColor: Colors.red,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            icon: Icon(
+                                              note.isFavorite ? Icons.favorite : Icons.favorite_outline,
+                                              color: note.isFavorite ? Colors.red : Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 12),
                                   ExpansionTile(
