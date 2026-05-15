@@ -47,6 +47,7 @@ class DefaultFirebaseOptions {
     projectId: 'tugasmandiri-jovan',
     authDomain: 'tugasmandiri-jovan.firebaseapp.com',
     storageBucket: 'tugasmandiri-jovan.firebasestorage.app',
+    databaseURL: 'https://tugasmandiri-jovan-default-rtdb.firebaseio.com',
     measurementId: 'G-V3FDRDHGDB',
   );
 
@@ -55,6 +56,7 @@ class DefaultFirebaseOptions {
     appId: '1:226229250123:android:8411097366d34dad1b45ce',
     messagingSenderId: '226229250123',
     projectId: 'tugasmandiri-jovan',
+    databaseURL: 'https://tugasmandiri-jovan-default-rtdb.firebaseio.com',
     storageBucket: 'tugasmandiri-jovan.firebasestorage.app',
   );
 
@@ -63,6 +65,7 @@ class DefaultFirebaseOptions {
     appId: '1:226229250123:ios:c7a09c5814254aff1b45ce',
     messagingSenderId: '226229250123',
     projectId: 'tugasmandiri-jovan',
+    databaseURL: 'https://tugasmandiri-jovan-default-rtdb.firebaseio.com',
     storageBucket: 'tugasmandiri-jovan.firebasestorage.app',
     iosBundleId: 'com.example.tugasIndividuFlutterFirebase',
   );
@@ -72,6 +75,7 @@ class DefaultFirebaseOptions {
     appId: '1:226229250123:ios:c7a09c5814254aff1b45ce',
     messagingSenderId: '226229250123',
     projectId: 'tugasmandiri-jovan',
+    databaseURL: 'https://tugasmandiri-jovan-default-rtdb.firebaseio.com',
     storageBucket: 'tugasmandiri-jovan.firebasestorage.app',
     iosBundleId: 'com.example.tugasIndividuFlutterFirebase',
   );
@@ -82,6 +86,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '226229250123',
     projectId: 'tugasmandiri-jovan',
     authDomain: 'tugasmandiri-jovan.firebaseapp.com',
+    databaseURL: 'https://tugasmandiri-jovan-default-rtdb.firebaseio.com',
     storageBucket: 'tugasmandiri-jovan.firebasestorage.app',
     measurementId: 'G-6GPQJDYDJV',
   );
