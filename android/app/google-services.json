@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "226229250123",
+    "project_id": "tugasmandiri-jovan",
+    "storage_bucket": "tugasmandiri-jovan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226229250123:android:8411097366d34dad1b45ce",
+        "android_client_info": {
+          "package_name": "com.example.tugas_individu_flutter_firebase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGTosudyJsCsM2yCUWHj0QJWvRrzKk9aQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
