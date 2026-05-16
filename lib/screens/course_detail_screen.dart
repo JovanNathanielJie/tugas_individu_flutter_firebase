@@ -44,7 +44,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Update course in Firebase
+      print('[CourseDetailScreen] Starting course update...');
       await _firebaseService.updateCourse(
         widget.course.id,
         _courseNameController.text.trim(),
@@ -52,12 +52,23 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       );
 
       if (mounted) {
+        print('[CourseDetailScreen] Update completed, waiting for sync...');
+        await Future.delayed(const Duration(milliseconds: 1000));
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✓ Mata kuliah berhasil diperbarui'), backgroundColor: Colors.green),
         );
+        
+        print('[CourseDetailScreen] Refreshing UI and navigating back...');
         setState(() => _isEditing = false);
+        
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
+      print('[CourseDetailScreen] Error during update: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
@@ -97,7 +108,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Course Header with Stats
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -168,148 +178,147 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 ],
               ),
             ),
-            // Course Stats
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: StreamBuilder<List<Note>>(
-                stream: _firebaseService.getNotesStream(),
-                builder: (context, snapshot) {
-                  final notes = snapshot.data ?? [];
-                  final courseNotes = notes.where((n) => n.courseId == widget.course.id).toList();
-                  final lastNote = courseNotes.isNotEmpty
-                      ? DateTime.fromMillisecondsSinceEpoch(courseNotes.first.timestamp)
-                      : null;
+            StreamBuilder<List<Note>>(
+              stream: _firebaseService.getNotesByCourseStream(widget.course.id),
+              builder: (context, snapshot) {
+                final notes = snapshot.data ?? [];
+                final lastNote = notes.isNotEmpty
+                    ? DateTime.fromMillisecondsSinceEpoch(notes.first.timestamp)
+                    : null;
 
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard('📝 Catatan', courseNotes.length.toString()),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard(
-                          '❤️ Favorit',
-                          widget.course.isFavorite ? 'Ya' : 'Tidak',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildStatCard(
-                          '⏱️ Update',
-                          lastNote != null
-                              ? DateFormat('dd MMM').format(lastNote)
-                              : '-',
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-            // Notes List for this Course
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Catatan untuk mata kuliah ini',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  StreamBuilder<List<Note>>(
-                    stream: _firebaseService.getNotesByCourseStream(widget.course.id),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final notes = snapshot.data ?? [];
-
-                      if (notes.isEmpty) {
-                        return Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(12),
+                return Column(
+                  children: [
+                    // Stats Row
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard('📝 Catatan', notes.length.toString()),
                           ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.note_outlined, size: 48, color: Colors.grey[400]),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Belum ada catatan untuk mata kuliah ini',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        children: notes.map((note) {
-                          final colors = [
-                            Colors.deepPurple,
-                            Colors.green,
-                            Colors.orange,
-                            Colors.blue,
-                            Colors.pink,
-                          ];
-                          final color = colors[notes.indexOf(note) % colors.length];
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: color.withOpacity(0.3)),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      note.title,
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      note.content,
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          DateFormat('dd MMM yyyy, HH:mm').format(
-                                            DateTime.fromMillisecondsSinceEpoch(note.timestamp),
-                                          ),
-                                          style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                                        ),
-                                        Icon(
-                                          note.isFavorite ? Icons.favorite : Icons.favorite_outline,
-                                          size: 14,
-                                          color: note.isFavorite ? Colors.red : Colors.grey[400],
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              '❤️ Favorit',
+                              widget.course.isFavorite ? 'Ya' : 'Tidak',
                             ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              '⏱️ Update',
+                              lastNote != null
+                                  ? DateFormat('dd MMM').format(lastNote)
+                                  : '-',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Catatan untuk mata kuliah ini',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 12),
+                          if (notes.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.note_outlined, size: 48, color: Colors.grey[400]),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Belum ada catatan untuk mata kuliah ini',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: notes.length,
+                              itemBuilder: (context, index) {
+                                final note = notes[index];
+                                final noteTime = DateTime.fromMillisecondsSinceEpoch(note.timestamp);
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Card(
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  note.title,
+                                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(
+                                                  note.isFavorite ? Icons.favorite : Icons.favorite_outline,
+                                                  color: note.isFavorite ? Colors.red : Colors.grey[600],
+                                                  size: 20,
+                                                ),
+                                                onPressed: () async {
+                                                  try {
+                                                    await _firebaseService.toggleNoteFavorite(note.id, note.isFavorite);
+                                                  } catch (e) {
+                                                    if (mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                                      );
+                                                    }
+                                                  }
+                                                },
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            note.content,
+                                            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            DateFormat('dd MMM yyyy, HH:mm').format(noteTime),
+                                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

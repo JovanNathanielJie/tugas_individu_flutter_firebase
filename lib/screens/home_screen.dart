@@ -676,19 +676,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       borderRadius: BorderRadius.circular(8),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: DropdownButton<String?>(
-                      value: _selectedCourseFilter == null ? 'Semua' : _selectedCourseFilter,
+                    child: DropdownButton<String>(
+                      value: _selectedCourseFilter ?? 'Semua',
                       isExpanded: true,
                       underline: const SizedBox(),
                       items: courseNames.map((String name) {
-                        return DropdownMenuItem<String?>(
-                          value: name == 'Semua' ? null : name,
+                        return DropdownMenuItem<String>(
+                          value: name,
                           child: Text(name),
                         );
                       }).toList(),
                       onChanged: (String? newValue) {
                         setState(() {
-                          _selectedCourseFilter = newValue;
+                          _selectedCourseFilter = newValue == 'Semua' ? null : newValue;
                         });
                       },
                     ),

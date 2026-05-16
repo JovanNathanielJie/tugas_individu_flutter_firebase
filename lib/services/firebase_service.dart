@@ -226,11 +226,68 @@ class FirebaseService {
   /// Update an existing course
   Future<void> updateCourse(String courseId, String name, String lecturer) async {
     try {
+      print('[FirebaseService] Updating course: $courseId with name: $name');
+      
+      // Update course info first
       await _coursesRef.child(courseId).update({
         'name': name,
         'lecturer': lecturer,
       });
+      print('[FirebaseService] Course updated successfully');
+      
+      // Update all notes with the same courseId to reflect the new course name
+      // Query all notes and update matching ones
+      try {
+        final event = await _notesRef.once();
+        if (event.snapshot.exists) {
+          final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+          print('[FirebaseService] Total notes in database: ${data.length}');
+          
+          final updateFutures = <Future>[];
+          
+          data.forEach((key, value) {
+            try {
+              final note = Map<dynamic, dynamic>.from(value);
+              final notesCourseId = note['courseId']?.toString() ?? '';
+              final targetCourseId = courseId.toString();
+              
+              print('[FirebaseService] Checking note $key: courseId=$notesCourseId vs target=$targetCourseId, courseName=${note['courseName']}');
+              
+              // Compare as strings to avoid type mismatch issues
+              if (notesCourseId == targetCourseId && notesCourseId.isNotEmpty) {
+                print('[FirebaseService] MATCH! Updating note: $key from "${note['courseName']}" to "$name"');
+                updateFutures.add(
+                  _notesRef.child(key).update({'courseName': name}).then((_) {
+                    print('[FirebaseService] Successfully updated note $key');
+                  }).catchError((e) {
+                    print('[FirebaseService] Failed to update note $key: $e');
+                  })
+                );
+              }
+            } catch (e) {
+              print('[FirebaseService] Error processing note $key: $e');
+            }
+          });
+          
+          // Wait for all note updates to complete
+          if (updateFutures.isNotEmpty) {
+            print('[FirebaseService] Waiting for ${updateFutures.length} note updates...');
+            await Future.wait(updateFutures);
+            print('[FirebaseService] All notes updated successfully!');
+            
+            // Extra delay to ensure Firebase replication
+            await Future.delayed(const Duration(milliseconds: 300));
+          } else {
+            print('[FirebaseService] No matching notes found to update');
+          }
+        } else {
+          print('[FirebaseService] No notes exist in database');
+        }
+      } catch (notesError) {
+        print('[FirebaseService] Error updating notes: $notesError');
+      }
     } catch (e) {
+      print('[FirebaseService] ERROR updating course: $e');
       throw Exception('Error updating course: $e');
     }
   }
