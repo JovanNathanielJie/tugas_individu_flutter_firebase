@@ -223,6 +223,18 @@ class FirebaseService {
     }
   }
 
+  /// Update an existing course
+  Future<void> updateCourse(String courseId, String name, String lecturer) async {
+    try {
+      await _coursesRef.child(courseId).update({
+        'name': name,
+        'lecturer': lecturer,
+      });
+    } catch (e) {
+      throw Exception('Error updating course: $e');
+    }
+  }
+
   /// Toggle favorite status of a course
   Future<void> toggleCourseFavorite(String courseId, bool isFavorite) async {
     try {

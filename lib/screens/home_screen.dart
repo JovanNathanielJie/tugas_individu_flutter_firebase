@@ -4,7 +4,9 @@ import '../models/note.dart';
 import '../services/firebase_service.dart';
 import 'add_course_screen.dart';
 import 'add_note_screen.dart';
+import 'course_detail_screen.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   final Function(bool)? onThemeChanged;
@@ -24,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isDarkMode = false;
   String _searchQuery = '';
   String _searchCourseQuery = '';
+  final TextEditingController _courseSearchController = TextEditingController();
+  Timer? _courseSearchDebounce;
   String? _selectedCourseFilter;
   List<Course> _allCourses = [];
   String _sortBy = 'newest'; // 'newest', 'oldest', 'a-z', 'z-a'
@@ -41,6 +45,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _tabController.dispose();
+    _courseSearchController.dispose();
+    _courseSearchDebounce?.cancel();
     super.dispose();
   }
 
@@ -71,6 +77,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          labelStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           tabs: const [
             Tab(text: 'Mata Kuliah'),
             Tab(text: 'Catatan'),
@@ -280,21 +291,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 children: [
                   Expanded(
                     child: TextField(
-                      onChanged: (value) {
-                        setState(() {
-                          _searchCourseQuery = value.toLowerCase();
+                      controller: _courseSearchController,
+                      onChanged: (v) {
+                        if (_courseSearchDebounce?.isActive ?? false) {
+                          _courseSearchDebounce!.cancel();
+                        }
+                        _courseSearchDebounce = Timer(const Duration(milliseconds: 400), () {
+                          if (mounted) {
+                            setState(() {
+                              _searchCourseQuery = v.toLowerCase();
+                            });
+                          }
                         });
                       },
                       decoration: InputDecoration(
                         hintText: 'Cari mata kuliah...',
                         prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchCourseQuery.isNotEmpty
+                        suffixIcon: _courseSearchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
                                 onPressed: () {
-                                  setState(() {
-                                    _searchCourseQuery = '';
-                                  });
+                                  _courseSearchController.clear();
+                                  _courseSearchDebounce?.cancel();
+                                  if (mounted) {
+                                    setState(() {
+                                      _searchCourseQuery = '';
+                                    });
+                                  }
                                 },
                               )
                             : null,
@@ -361,7 +384,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             else
               Builder(
                 builder: (context) {
-                  // Filter courses based on search query
                   var filteredCourses = courses.where((course) {
                     return course.name.toLowerCase().contains(_searchCourseQuery) ||
                         course.lecturer.toLowerCase().contains(_searchCourseQuery);
@@ -453,107 +475,137 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Card(
-                              elevation: 0,
-                              margin: EdgeInsets.zero,
-                              child: Column(
-                                children: [
-                                  Container(
-                                    height: 4,
-                                    color: color,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                color,
-                                                color.withOpacity(0.7),
-                                              ],
-                                            ),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: const Icon(
-                                            Icons.book_outlined,
-                                            color: Colors.white,
-                                            size: 28,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                course.name,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 16,
-                                                  letterSpacing: 0.2,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CourseDetailScreen(course: course),
+                                    ),
+                                  );
+                                },
+                                child: Card(
+                                  elevation: 0,
+                                  margin: EdgeInsets.zero,
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        height: 4,
+                                        color: color,
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 56,
+                                              height: 56,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    color,
+                                                    color.withOpacity(0.7),
+                                                  ],
                                                 ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
+                                                borderRadius: BorderRadius.circular(12),
                                               ),
-                                              const SizedBox(height: 6),
-                                              Row(
+                                              child: const Icon(
+                                                Icons.book_outlined,
+                                                color: Colors.white,
+                                                size: 28,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Icon(
-                                                    Icons.person_outline,
-                                                    size: 14,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: Text(
-                                                      course.lecturer,
-                                                      style: TextStyle(
-                                                        color: Colors.grey[600],
-                                                        fontSize: 13,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                  Text(
+                                                    course.name,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 16,
+                                                      letterSpacing: 0.2,
                                                     ),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.person_outline,
+                                                        size: 14,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Expanded(
+                                                        child: Text(
+                                                          course.lecturer,
+                                                          style: TextStyle(
+                                                            color: Colors.grey[600],
+                                                            fontSize: 13,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  // Note count
+                                                  StreamBuilder<List<Note>>(
+                                                    stream: _firebaseService.getNotesStream(),
+                                                    builder: (context, notesSnapshot) {
+                                                      final courseNotes = (notesSnapshot.data ?? [])
+                                                          .where((n) => n.courseId == course.id)
+                                                          .length;
+                                                      return Text(
+                                                        '📝 $courseNotes catatan',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.grey[500],
+                                                        ),
+                                                      );
+                                                    },
                                                   ),
                                                 ],
                                               ),
-                                            ],
-                                          ),
+                                            ),
+                                            IconButton(
+                                              onPressed: () async {
+                                                try {
+                                                  await _firebaseService.toggleCourseFavorite(
+                                                    course.id,
+                                                    course.isFavorite,
+                                                  );
+                                                } catch (e) {
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('Error: $e'),
+                                                        backgroundColor: Colors.red,
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                              icon: Icon(
+                                                course.isFavorite ? Icons.favorite : Icons.favorite_outline,
+                                                color: course.isFavorite ? Colors.red : Colors.grey[600],
+                                                size: 24,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        IconButton(
-                                          onPressed: () async {
-                                            try {
-                                              await _firebaseService.toggleCourseFavorite(
-                                                course.id,
-                                                course.isFavorite,
-                                              );
-                                            } catch (e) {
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('Error: $e'),
-                                                    backgroundColor: Colors.red,
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                          icon: Icon(
-                                            course.isFavorite ? Icons.favorite : Icons.favorite_outline,
-                                            color: course.isFavorite ? Colors.red : Colors.grey[600],
-                                            size: 24,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -573,7 +625,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildNotesTab() {
     return Column(
       children: [
-        // Search and Filter Section
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -608,56 +659,43 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
               const SizedBox(height: 12),
-              // Filter by course and Sort
-              Row(
-                children: [
-                  Expanded(
-                    child: StreamBuilder<List<Course>>(
-                      stream: _firebaseService.getCoursesStream(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const SizedBox.shrink();
-                        }
-                        
-                        _allCourses = snapshot.data ?? [];
-                        List<String> courseNames = [
-                          'Semua',
-                          ..._allCourses.map((c) => c.name)
-                        ];
-                        
-                        return SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: courseNames.map((name) {
-                              bool isSelected = _selectedCourseFilter == null && name == 'Semua' ||
-                                  _selectedCourseFilter == name;
-                              
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: Text(name, overflow: TextOverflow.ellipsis),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    setState(() {
-                                      if (name == 'Semua') {
-                                        _selectedCourseFilter = null;
-                                      } else {
-                                        _selectedCourseFilter = selected ? name : null;
-                                      }
-                                    });
-                                  },
-                                ),
-                              );
-                            }).toList(),
-                          ),
+              // Course filter dropdown
+              StreamBuilder<List<Course>>(
+                stream: _firebaseService.getCoursesStream(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+                  
+                  _allCourses = snapshot.data ?? [];
+                  List<String> courseNames = ['Semua', ..._allCourses.map((c) => c.name)];
+                  
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: DropdownButton<String?>(
+                      value: _selectedCourseFilter == null ? 'Semua' : _selectedCourseFilter,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      items: courseNames.map((String name) {
+                        return DropdownMenuItem<String?>(
+                          value: name == 'Semua' ? null : name,
+                          child: Text(name),
                         );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedCourseFilter = newValue;
+                        });
                       },
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
-              // Sort options and Favorites filter
               Row(
                 children: [
                   const Icon(Icons.sort, size: 18),
@@ -772,7 +810,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         var notes = snapshot.data ?? [];
         
-        // Apply search filter
         if (_searchQuery.isNotEmpty) {
           notes = notes.where((note) {
             return note.title.toLowerCase().contains(_searchQuery) ||
@@ -781,19 +818,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           }).toList();
         }
         
-        // Apply course filter
         if (_selectedCourseFilter != null) {
           notes = notes.where((note) {
             return note.courseName == _selectedCourseFilter;
           }).toList();
         }
 
-        // Apply favorites filter
         if (_showFavoritesOnly) {
           notes = notes.where((note) => note.isFavorite).toList();
         }
 
-        // Apply sorting
         switch (_sortBy) {
           case 'oldest':
             notes.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -854,7 +888,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    // Expand the tile
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
