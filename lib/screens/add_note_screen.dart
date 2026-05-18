@@ -259,7 +259,6 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    // Title
                     Text(
                       'Judul Catatan',
                       style: TextStyle(
@@ -310,7 +309,6 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    // Content
                     Text(
                       'Isi Catatan',
                       style: TextStyle(

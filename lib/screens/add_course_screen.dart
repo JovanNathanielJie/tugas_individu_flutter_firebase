@@ -23,7 +23,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     super.dispose();
   }
 
-  // Validasi disederhanakan agar lebih ringan
   String? _validateInput(String? value, String fieldName) {
     if (value == null || value.isEmpty) {
       return '$fieldName tidak boleh kosong';
@@ -76,7 +75,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Pastikan background bersih
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Tambah Mata Kuliah', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.deepPurple,

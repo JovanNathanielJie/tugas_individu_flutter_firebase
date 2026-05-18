@@ -12,9 +12,6 @@ class FirebaseService {
     _notesRef = _database.ref().child('notes');
   }
 
-  // ============ COURSE OPERATIONS ============
-
-  /// Add a new course to Firebase
   Future<String> addCourse(String name, String lecturer) async {
     try {
       final newCourseRef = _coursesRef.push();
@@ -28,7 +25,6 @@ class FirebaseService {
     }
   }
 
-  /// Get all courses as a stream
   Stream<List<Course>> getCoursesStream() {
     print('[FirebaseService] Loading courses...');
     return _coursesRef.onValue
@@ -62,7 +58,6 @@ class FirebaseService {
     });
   }
 
-  /// Get all courses as a future (one-time read)
   Future<List<Course>> getCourses() async {
     try {
       final event = await _coursesRef.once();
@@ -83,9 +78,6 @@ class FirebaseService {
     }
   }
 
-  // ============ NOTE OPERATIONS ============
-
-  /// Add a new note to Firebase
   Future<String> addNote(
     String courseId,
     String courseName,
@@ -107,7 +99,6 @@ class FirebaseService {
     }
   }
 
-  /// Get all notes as a stream
   Stream<List<Note>> getNotesStream() {
     print('[FirebaseService] Loading notes...');
     return _notesRef.onValue
@@ -134,7 +125,6 @@ class FirebaseService {
       } catch (e) {
         print('Error in getNotesStream: $e');
       }
-      // Sort notes by timestamp in descending order (newest first)
       notes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return notes;
     }).handleError((error) {
@@ -143,7 +133,6 @@ class FirebaseService {
     });
   }
 
-  /// Get all notes as a future (one-time read)
   Future<List<Note>> getNotes() async {
     try {
       final event = await _notesRef.once();
@@ -158,7 +147,6 @@ class FirebaseService {
           }
         });
       }
-      // Sort notes by timestamp in descending order
       notes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return notes;
     } catch (e) {
@@ -166,7 +154,6 @@ class FirebaseService {
     }
   }
 
-  /// Get notes for a specific course
   Stream<List<Note>> getNotesByCourseStream(String courseId) {
     return _notesRef.onValue
         .timeout(
@@ -202,7 +189,6 @@ class FirebaseService {
     });
   }
 
-  /// Update an existing note
   Future<void> updateNote(String noteId, String title, String content) async {
     try {
       await _notesRef.child(noteId).update({
@@ -214,7 +200,6 @@ class FirebaseService {
     }
   }
 
-  /// Delete a note
   Future<void> deleteNote(String noteId) async {
     try {
       await _notesRef.child(noteId).remove();
@@ -223,25 +208,17 @@ class FirebaseService {
     }
   }
 
-  /// Update an existing course
   Future<void> updateCourse(String courseId, String name, String lecturer) async {
     try {
-      print('[FirebaseService] Updating course: $courseId with name: $name');
-      
-      // Update course info first
       await _coursesRef.child(courseId).update({
         'name': name,
         'lecturer': lecturer,
       });
-      print('[FirebaseService] Course updated successfully');
       
-      // Update all notes with the same courseId to reflect the new course name
-      // Query all notes and update matching ones
       try {
         final event = await _notesRef.once();
         if (event.snapshot.exists) {
           final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
-          print('[FirebaseService] Total notes in database: ${data.length}');
           
           final updateFutures = <Future>[];
           
@@ -251,17 +228,9 @@ class FirebaseService {
               final notesCourseId = note['courseId']?.toString() ?? '';
               final targetCourseId = courseId.toString();
               
-              print('[FirebaseService] Checking note $key: courseId=$notesCourseId vs target=$targetCourseId, courseName=${note['courseName']}');
-              
-              // Compare as strings to avoid type mismatch issues
               if (notesCourseId == targetCourseId && notesCourseId.isNotEmpty) {
-                print('[FirebaseService] MATCH! Updating note: $key from "${note['courseName']}" to "$name"');
                 updateFutures.add(
-                  _notesRef.child(key).update({'courseName': name}).then((_) {
-                    print('[FirebaseService] Successfully updated note $key');
-                  }).catchError((e) {
-                    print('[FirebaseService] Failed to update note $key: $e');
-                  })
+                  _notesRef.child(key).update({'courseName': name})
                 );
               }
             } catch (e) {
@@ -269,30 +238,17 @@ class FirebaseService {
             }
           });
           
-          // Wait for all note updates to complete
           if (updateFutures.isNotEmpty) {
-            print('[FirebaseService] Waiting for ${updateFutures.length} note updates...');
             await Future.wait(updateFutures);
-            print('[FirebaseService] All notes updated successfully!');
-            
-            // Extra delay to ensure Firebase replication
             await Future.delayed(const Duration(milliseconds: 300));
-          } else {
-            print('[FirebaseService] No matching notes found to update');
           }
-        } else {
-          print('[FirebaseService] No notes exist in database');
         }
-      } catch (notesError) {
-        print('[FirebaseService] Error updating notes: $notesError');
-      }
+      } catch (notesError) {}
     } catch (e) {
-      print('[FirebaseService] ERROR updating course: $e');
       throw Exception('Error updating course: $e');
     }
   }
 
-  /// Toggle favorite status of a course
   Future<void> toggleCourseFavorite(String courseId, bool isFavorite) async {
     try {
       await _coursesRef.child(courseId).update({
@@ -303,7 +259,6 @@ class FirebaseService {
     }
   }
 
-  /// Toggle favorite status of a note
   Future<void> toggleNoteFavorite(String noteId, bool isFavorite) async {
     try {
       await _notesRef.child(noteId).update({
@@ -314,7 +269,6 @@ class FirebaseService {
     }
   }
 
-  /// Get favorite courses
   Stream<List<Course>> getFavoriteCoursesStream() {
     return _coursesRef.onValue
         .timeout(
@@ -350,7 +304,6 @@ class FirebaseService {
     });
   }
 
-  /// Get favorite notes
   Stream<List<Note>> getFavoriteNotesStream() {
     return _notesRef.onValue
         .timeout(
@@ -379,11 +332,9 @@ class FirebaseService {
       } catch (e) {
         print('Error in getFavoriteNotesStream: $e');
       }
-      // Sort notes by timestamp in descending order (newest first)
       notes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return notes;
     }).handleError((error) {
-      print('[FirebaseService] ERROR loading favorite notes: $error');
       return [];
     });
   }

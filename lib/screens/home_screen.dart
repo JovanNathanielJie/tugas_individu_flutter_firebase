@@ -30,8 +30,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Timer? _courseSearchDebounce;
   String? _selectedCourseFilter;
   List<Course> _allCourses = [];
-  String _sortBy = 'newest'; // 'newest', 'oldest', 'a-z', 'z-a'
-  bool _showFavoritesOnly = false; // NEW: Filter untuk favorites
+  String _sortBy = 'newest';
+  bool _showFavoritesOnly = false;
 
   @override
   void initState() {
@@ -91,9 +91,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 1: Courses
           _buildCoursesTab(),
-          // Tab 2: Notes
           _buildNotesTab(),
         ],
       ),
@@ -176,7 +174,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         return ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Statistics Card
             Padding(
               padding: const EdgeInsets.all(16),
               child: StreamBuilder<List<Note>>(
@@ -284,7 +281,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 },
               ),
             ),
-            // Search Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -349,7 +345,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ],
               ),
             ),
-            // Courses List
             if (courses.isEmpty)
               Center(
                 child: Padding(
@@ -389,7 +384,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         course.lecturer.toLowerCase().contains(_searchCourseQuery);
                   }).toList();
 
-                  // Apply favorites filter
                   if (_showFavoritesOnly) {
                     filteredCourses = filteredCourses.where((course) => course.isFavorite).toList();
                   }
@@ -557,7 +551,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                                     ],
                                                   ),
                                                   const SizedBox(height: 6),
-                                                  // Note count
                                                   StreamBuilder<List<Note>>(
                                                     stream: _firebaseService.getNotesStream(),
                                                     builder: (context, notesSnapshot) {
@@ -629,7 +622,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Search field
               TextField(
                 onChanged: (value) {
                   setState(() {
@@ -659,7 +651,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
               const SizedBox(height: 12),
-              // Course filter dropdown
               StreamBuilder<List<Course>>(
                 stream: _firebaseService.getCoursesStream(),
                 builder: (context, snapshot) {

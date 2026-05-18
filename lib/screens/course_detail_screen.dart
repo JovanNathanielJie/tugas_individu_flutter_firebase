@@ -188,7 +188,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
                 return Column(
                   children: [
-                    // Stats Row
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(
